@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Street Racing 2D</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+            touch-action: none;
+        }
+
+        #gameContainer {
+            position: relative;
+            width: 100%;
+            max-width: 400px;
+            height: 100vh;
+            max-height: 700px;
+            background: #2a2a3e;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+        }
+
+        #gameCanvas {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(180deg, #1a1a2e 0%, #0f3460 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .road-line {
+            position: absolute;
+            width: 4px;
+            height: 60px;
+            background: #fff;
+            left: 50%;
+            transform: translateX(-50%);
+            animation: moveDown 1.5s linear infinite;
+        }
+
+        @keyframes moveDown {
+            from { top: -60px; }
+            to { top: 100%; }
+        }
+
+        .player {
+            position: absolute;
+            width: 98px;
+            height: 156px;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            transition: left 0.15s ease-out;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .player img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .obstacle {
+            position: absolute;
+            width: 98px;
+            height: 156px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+        }
+
+        .obstacle img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        #controls {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: space-around;
+            padding: 0 20px;
+            z-index: 100;
+        }
+
+        .control-btn {
+            width: 80px;
+            height: 80px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 3px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 32px;
+            color: white;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.1s;
+            backdrop-filter: blur(10px);
+        }
+
+        .control-btn:active {
+            transform: scale(0.95);
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        #pauseBtn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 50px;
+            height: 50px;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 10px;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 100;
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        #score {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            z-index: 100;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
+        }
+
+        .screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 200;
+            backdrop-filter: blur(5px);
+        }
+
+        .screen h1 {
+            color: white;
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.5);
+        }
+
+        .screen p {
+            color: #ccc;
+            font-size: 20px;
+            margin-bottom: 30px;
+        }
+
+        .btn {
+            padding: 15px 40px;
+            font-size: 24px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: transform 0.2s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:active {
+            transform: scale(0.95);
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        @media (max-width: 480px) {
+            #gameContainer {
+                max-width: 100%;
+                max-height: 100vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameContainer">
+        <div id="startScreen" class="screen">
+            <h1>🏍️ Street Racing</h1>
+            <p>Avoid the obstacles!</p>
+            <button class="btn" onclick="startGame()">PLAY</button>
+        </div>
+
+        <div id="pauseScreen" class="screen hidden">
+            <h1>⏸️ PAUSED</h1>
+            <button class="btn" onclick="resumeGame()">RESUME</button>
+            <button class="btn" onclick="restartGame()" style="margin-top: 15px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">RESTART</button>
+        </div>
+
+        <div id="gameOverScreen" class="screen hidden">
+            <h1>💥 GAME OVER</h1>
+            <p id="finalScore">Score: 0</p>
+            <button class="btn" onclick="restartGame()">PLAY AGAIN</button>
+        </div>
+
+        <div id="gameCanvas">
+            <div id="score">Score: 0</div>
+            <button id="pauseBtn" onclick="togglePause()">⏸️</button>
+            <div id="player" class="player">
+                <img src="player.png" alt="Player">
+            </div>
+        </div>
+
+        <div id="controls">
+            <div class="control-btn" id="leftBtn">◀</div>
+            <div class="control-btn" id="rightBtn">▶</div>
+        </div>
+    </div>
+
+    <script>
+        const gameCanvas = document.getElementById('gameCanvas');
+        const player = document.getElementById('player');
+        const scoreDisplay = document.getElementById('score');
+        const startScreen = document.getElementById('startScreen');
+        const pauseScreen = document.getElementById('pauseScreen');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const finalScoreDisplay = document.getElementById('finalScore');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const leftBtn = document.getElementById('leftBtn');
+        const rightBtn = document.getElementById('rightBtn');
+
+        let gameState = 'start'; // start, playing, paused, gameover
+        let score = 0;
+        let playerLane = 1; // 0 = left, 1 = center, 2 = right
+        let obstacles = [];
+        let gameLoop;
+        let obstacleInterval;
+        let roadLines = [];
+        let speed = 5;
+        let obstacleSpeed = 5;
+
+        const lanes = [25, 50, 75]; // percentage positions
+
+        // Create road lines
+        function createRoadLines() {
+            for (let i = 0; i < 8; i++) {
+                const line = document.createElement('div');
+                line.className = 'road-line';
+                line.style.top = `${i * 100}px`;
+                line.style.animationDelay = `${i * 0.2}s`;
+                gameCanvas.appendChild(line);
+                roadLines.push(line);
+            }
+        }
+
+        function movePlayer(direction) {
+            if (gameState !== 'playing') return;
+            
+            if (direction === 'left' && playerLane > 0) {
+                playerLane--;
+            } else if (direction === 'right' && playerLane < 2) {
+                playerLane++;
+            }
+            
+            player.style.left = lanes[playerLane] + '%';
+        }
+
+        // Touch and mouse controls
+        leftBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            movePlayer('left');
+        });
+
+        rightBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            movePlayer('right');
+        });
+
+        leftBtn.addEventListener('mousedown', () => movePlayer('left'));
+        rightBtn.addEventListener('mousedown', () => movePlayer('right'));
+
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft') movePlayer('left');
+            if (e.key === 'ArrowRight') movePlayer('right');
+            if (e.key === ' ' || e.key === 'Escape') togglePause();
+        });
+
+        function createObstacle() {
+            if (gameState !== 'playing') return;
+
+            const obstacle = document.createElement('div');
+            obstacle.className = 'obstacle';
+            
+            const img = document.createElement('img');
+            img.src = 'obstacle.png';
+            img.alt = 'Obstacle';
+            obstacle.appendChild(img);
+            
+            const randomLane = Math.floor(Math.random() * 3);
+            obstacle.style.left = lanes[randomLane] + '%';
+            obstacle.style.top = '-156px';
+            obstacle.style.transform = 'translateX(-50%)';
+            obstacle.dataset.lane = randomLane;
+            
+            gameCanvas.appendChild(obstacle);
+            obstacles.push(obstacle);
+        }
+
+        function updateGame() {
+            if (gameState !== 'playing') return;
+
+            // Move obstacles
+            obstacles.forEach((obstacle, index) => {
+                const currentTop = parseFloat(obstacle.style.top);
+                obstacle.style.top = (currentTop + obstacleSpeed) + 'px';
+
+                // Check collision
+                const playerBottom = gameCanvas.offsetHeight - 100;
+                const playerTop = playerBottom - 156;
+                const obstacleTop = currentTop;
+                const obstacleBottom = currentTop + 156;
+
+                if (parseInt(obstacle.dataset.lane) === playerLane &&
+                    obstacleBottom > playerTop &&
+                    obstacleTop < playerBottom) {
+                    gameOver();
+                }
+
+                // Remove obstacle if off screen
+                if (currentTop > gameCanvas.offsetHeight) {
+                    obstacle.remove();
+                    obstacles.splice(index, 1);
+                    score += 10;
+                    scoreDisplay.textContent = 'Score: ' + score;
+
+                    // Increase difficulty
+                    if (score % 100 === 0) {
+                        obstacleSpeed += 0.5;
+                    }
+                }
+            });
+        }
+
+        function startGame() {
+            gameState = 'playing';
+            score = 0;
+            playerLane = 1;
+            obstacleSpeed = 5;
+            obstacles.forEach(obs => obs.remove());
+            obstacles = [];
+            
+            player.style.left = lanes[playerLane] + '%';
+            scoreDisplay.textContent = 'Score: 0';
+            
+            startScreen.classList.add('hidden');
+            pauseScreen.classList.add('hidden');
+            gameOverScreen.classList.add('hidden');
+            pauseBtn.style.display = 'flex';
+            pauseBtn.textContent = '⏸️';
+
+            if (!roadLines.length) createRoadLines();
+
+            gameLoop = setInterval(updateGame, 1000 / 60); // 60 FPS
+            obstacleInterval = setInterval(createObstacle, 1500);
+        }
+
+        function togglePause() {
+            if (gameState === 'playing') {
+                gameState = 'paused';
+                pauseScreen.classList.remove('hidden');
+                pauseBtn.textContent = '▶️';
+                clearInterval(gameLoop);
+                clearInterval(obstacleInterval);
+            } else if (gameState === 'paused') {
+                resumeGame();
+            }
+        }
+
+        function resumeGame() {
+            gameState = 'playing';
+            pauseScreen.classList.add('hidden');
+            pauseBtn.textContent = '⏸️';
+            gameLoop = setInterval(updateGame, 1000 / 60);
+            obstacleInterval = setInterval(createObstacle, 1500);
+        }
+
+        function gameOver() {
+            gameState = 'gameover';
+            clearInterval(gameLoop);
+            clearInterval(obstacleInterval);
+            finalScoreDisplay.textContent = 'Score: ' + score;
+            gameOverScreen.classList.remove('hidden');
+            pauseBtn.style.display = 'none';
+        }
+
+        function restartGame() {
+            obstacles.forEach(obs => obs.remove());
+            obstacles = [];
+            startGame();
+        }
+    </script>
+</body>
+</html>
